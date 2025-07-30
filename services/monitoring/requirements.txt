@@ -1,0 +1,5 @@
+prometheus-client
+grafana-api
+redis
+sqlalchemy
+psycopg2-binary
