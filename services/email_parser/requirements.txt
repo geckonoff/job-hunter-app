@@ -1,5 +1,4 @@
 imaplib2
-email-parser
 sqlalchemy
 psycopg2-binary
 redis
