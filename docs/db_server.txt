@@ -1,0 +1,25 @@
+# Установка баз данных
+sudo apt update
+sudo apt install postgresql-15 redis rabbitmq-server -y
+
+# PostgreSQL настройка
+sudo -u postgres psql -c "CREATE USER jobuser WITH PASSWORD 'jobpass';"
+sudo -u postgres psql -c "CREATE DATABASE jobhunter OWNER jobuser;"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE jobhunter TO jobuser;"
+
+# Разрешить внешние подключения
+sudo sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" /etc/postgresql/15/main/postgresql.conf
+
+# Добавить в pg_hba.conf
+echo "host    jobhunter       jobuser         10.0.1.0/24             md5" | sudo tee -a /etc/postgresql/15/main/pg_hba.conf
+
+# Перезапустить PostgreSQL
+sudo systemctl restart postgresql
+
+# Redis настройка
+sudo sed -i "s/bind 127.0.0.1 ::1/bind 0.0.0.0/g" /etc/redis/redis.conf
+sudo systemctl restart redis
+
+# RabbitMQ настройка
+sudo rabbitmq-plugins enable rabbitmq_management
+sudo systemctl restart rabbitmq-server

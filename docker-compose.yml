@@ -1,35 +1,93 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_USER: jobuser
-      POSTGRES_PASSWORD: jobpass
-      POSTGRES_DB: jobhunter
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-
   api_gateway:
     build: ./services/api_gateway
     ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
-      - redis
+      - "80:8000"
+    environment:
+      - DATABASE_URL=postgresql://jobuser:jobpass@192.168.122.100:5432/jobhunter
+      - REDIS_URL=redis://192.168.122.100:6379
+      - RABBITMQ_URL=amqp://guest:guest@192.168.122.100:5672
+    restart: unless-stopped
+    networks:
+      - app-network
 
-volumes:
-  postgres_data:
+  email_parser:
+    build: ./services/email_parser
+    environment:
+      - DATABASE_URL=postgresql://jobuser:jobpass@192.168.122.100:5432/jobhunter
+      - REDIS_URL=redis://192.168.122.100:6379
+      - RABBITMQ_URL=amqp://guest:guest@192.168.122.100:5672
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  linkedin_scraper:
+    build: ./services/linkedin_scraper
+    environment:
+      - DATABASE_URL=postgresql://jobuser:jobpass@192.168.122.100:5432/jobhunter
+      - REDIS_URL=redis://192.168.122.100:6379
+      - RABBITMQ_URL=amqp://guest:guest@192.168.122.100:5672
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  stepstone_parser:
+    build: ./services/stepstone_parser
+    environment:
+      - DATABASE_URL=postgresql://jobuser:jobpass@192.168.122.100:5432/jobhunter
+      - REDIS_URL=redis://192.168.122.100:6379
+      - RABBITMQ_URL=amqp://guest:guest@192.168.122.100:5672
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  telegram_bot:
+    build: ./services/telegram_bot
+    environment:
+      - DATABASE_URL=postgresql://jobuser:jobpass@192.168.122.100:5432/jobhunter
+      - REDIS_URL=redis://192.168.122.100:6379
+      - RABBITMQ_URL=amqp://guest:guest@192.168.122.100:5672
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  chatbot:
+    build: ./services/chatbot
+    environment:
+      - DATABASE_URL=postgresql://jobuser:jobpass@192.168.122.100:5432/jobhunter
+      - REDIS_URL=redis://192.168.122.100:6379
+      - RABBITMQ_URL=amqp://guest:guest@192.168.122.100:5672
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OLLAMA_HOST=http://localhost:11434
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  scheduler:
+    build: ./services/scheduler
+    environment:
+      - DATABASE_URL=postgresql://jobuser:jobpass@192.168.122.100:5432/jobhunter
+      - REDIS_URL=redis://192.168.122.100:6379
+      - RABBITMQ_URL=amqp://guest:guest@192.168.122.100:5672
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  monitoring:
+    build: ./services/monitoring
+    ports:
+      - "3000:3000"  # Grafana
+      - "9090:9090"  # Prometheus
+    environment:
+      - DATABASE_URL=postgresql://jobuser:jobpass@192.168.122.100:5432/jobhunter
+      - REDIS_URL=redis://192.168.122.100:6379
+    restart: unless-stopped
+    networks:
+      - app-network
+
+# Сетевые настройки
+networks:
+  app-network:
+    driver: bridge
